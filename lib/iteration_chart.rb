@@ -221,7 +221,7 @@ class IterationChart
   end
  
   def can_be_cached?
-    false  # if appropriate, switch to true once you move your macro to production
+    true  # if appropriate, switch to true once you move your macro to production
   end
     
 end
