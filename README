@@ -1,0 +1,96 @@
+Iteration Chart Mingle Plugin
+-----------------------------
+
+  http://github.com/chrisleishman/iteration_chart
+  http://www.thoughtworks-studios.com/mingle-agile-project-management
+
+This is a Mingle plugin for better drawing of charts based on iterations.
+Requires the use of an Iteration card type in the project. All queries must
+also return a Iteration card property as the first result.
+
+Copyright (c) 2010 Chris Leishman <chris@leishman.org>
+Licensed under MIT license
+
+Examples below:
+
+h1. Total Scope Burnup
+
+{{
+  iteration-chart
+    iteration-card-type: 'Iteration'
+    legend: 3
+    series:
+    - label: 'Total Scope'
+      cumulative: true
+      type: area
+      data:
+      - query: SELECT 'Added to Scope in Iteration',  SUM('Estimate') WHERE 'Added to Scope in Iteration' IS NOT NULL AND 'Type' = 'Story'
+      - query: SELECT 'Dropped in Iteration', SUM('Estimate') WHERE 'Dropped in Iteration' IS NOT NULL AND 'Type' = 'Story'
+        negate: true
+    - label: 'Completed Scope'
+      cumulative: true
+      type: line,points
+      data: SELECT 'Accepted in Iteration', SUM('Estimate') WHERE 'Accepted in Iteration' IS NOT NULL AND 'Type' = 'Story'
+    - label: 'Removed Scope'
+      type: bar
+      data: SELECT 'Dropped in Iteration', SUM('Estimate') WHERE 'Dropped in Iteration' IS NOT NULL AND 'Type' = 'Story'
+      negate: true
+      offset: -0.5
+}}
+
+h1. Scope Changes
+
+{{
+  iteration-chart
+    iteration-card-type: 'Iteration'
+    legend: 2
+    iterations-from: 0
+    series:
+    - label: 'Scope Added'
+      type: bar
+      data: SELECT 'Added to Scope in Iteration',  SUM('Estimate') WHERE 'Added to Scope in Iteration' IS NOT NULL AND 'Type' = 'Story'
+      iterations-from: 1
+    - label: 'Scope Removed'
+      color: 2
+      type: bar
+      data: SELECT 'Dropped in Iteration', SUM('Estimate') WHERE 'Dropped in Iteration' IS NOT NULL AND 'Type' = 'Story'
+      negate: true
+      iterations-from: 1
+}}
+
+h1. Velocity per Iteration
+
+{{
+  iteration-chart
+    iteration-card-type: 'Iteration'
+    legend: false
+    series:
+    - label: 'Velocity'
+      type: line
+      data: SELECT 'Accepted in Iteration', SUM('Estimate') WHERE 'Accepted in Iteration' IS NOT NULL AND 'Type' = 'Story'
+}}
+
+h1. Finger Chart
+
+{{
+  iteration-chart
+    iteration-card-type: 'Iteration'
+    opaque-fills: false
+    series:
+    - label: 'In Dev'
+      type: area
+      cumulative: true
+      stack: true
+      data:
+      - query: SELECT 'Added to Dev Backlog in Iteration', SUM('Estimate') WHERE 'Added to Dev Backlog in Iteration' IS NOT NULL AND 'Type' = 'Story'
+      - query: SELECT 'Added to QA Backlog in Iteration', SUM('Estimate') WHERE 'Added to QA Backlog in Iteration' IS NOT NULL AND 'Type' = 'Story'
+        negate: true
+    - label: 'In QA'
+      type: area
+      cumulative: true
+      stack: true
+      data:
+      - query: SELECT 'Added to QA Backlog in Iteration', SUM('Estimate') WHERE 'Added to QA Backlog in Iteration' IS NOT NULL AND 'Type' = 'Story'
+      - query: SELECT 'QA Passed in Iteration', SUM('Estimate') WHERE 'QA Passed in Iteration' IS NOT NULL AND 'Type' = 'Story'
+        negate: true
+}}
