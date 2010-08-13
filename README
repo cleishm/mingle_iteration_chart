@@ -75,7 +75,7 @@ h1. Finger Chart
 {{
   iteration-chart
     iteration-card-type: 'Iteration'
-    opaque-fills: false
+    transparent-fills: false
     series:
     - label: 'In Dev'
       type: area

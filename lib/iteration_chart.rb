@@ -35,7 +35,7 @@ class IterationChart
     min_y = to_f_or_nil(@parameters['min'])
     max_y = to_f_or_nil(@parameters['max'])
     
-    fill = (@parameters['opaque-fills'] != false)? 'true' : '1'
+    fill = (@parameters['transparent-fills'] != false)? 'true' : '1'
     show_legend = @parameters['legend'] != false
     legend_columns = to_i_or_nil(@parameters['legend'])
 
