@@ -40,7 +40,8 @@ class IterationChart
     legend_columns = to_i_or_nil(@parameters['legend'])
 
   <<-HTML
-    <script language="javascript" type="text/javascript" src="../../../../plugin_assets/iteration_chart/javascripts/excanvas.compiled.js"></script>
+    <notextile>
+    <!--[if IE]><script language="javascript" type="text/javascript" src="../../../../plugin_assets/iteration_chart/javascripts/excanvas.compiled.js"></script><![endif]-->
     <script language="javascript" type="text/javascript" src="../../../../plugin_assets/iteration_chart/javascripts/jquery.min.js"></script>
     <script language="javascript" type="text/javascript" src="../../../../plugin_assets/iteration_chart/javascripts/jquery.flot.min.js"></script>
     <div id="iterchart#{tag_id}" style="width:600px;height:300px;"></div>
@@ -100,6 +101,7 @@ class IterationChart
       });
     })(jQuery);
     </script>
+    </notexttile>
   HTML
   
   end
