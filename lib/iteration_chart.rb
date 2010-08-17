@@ -21,13 +21,14 @@ class IterationChart
     
     @iterations = @project.execute_mql('select number, name where type = "' + @parameters['iteration-card-type'] + '" order by number')
     
-    series = @parameters['series'].reverse.inject([]){|series, definition|
+    series = @parameters['series'].collect{|definition|
       aseries = yaml_definition_to_series(definition)
-      points = points_for_a_series(aseries)
-      last_stacked = series.find{|s| s[:stack]}
-      aseries[:points] = (!aseries[:stack] || last_stacked.nil?) ? points : sum_points(last_stacked[:points], points)
-      series.unshift(aseries)
+      aseries[:points] = points_for_a_series(aseries)
+      aseries
     }
+    
+    chart_height = to_i_or_nil(@parameters['chart-height']) || 300
+    chart_width = to_i_or_nil(@parameters['chart-width']) || 600
     
     iterations_from = iteration_description_to_i(@parameters['iterations-from'])
     iterations_to = iteration_description_to_i(@parameters['iterations-to'])
@@ -35,7 +36,6 @@ class IterationChart
     min_y = to_f_or_nil(@parameters['min'])
     max_y = to_f_or_nil(@parameters['max'])
     
-    fill = (@parameters['transparent-fills'] != false)? 'true' : '1'
     show_legend = @parameters['legend'] != false
     legend_columns = to_i_or_nil(@parameters['legend'])
 
@@ -44,48 +44,58 @@ class IterationChart
     <!--[if IE]><script language="javascript" type="text/javascript" src="../../../../plugin_assets/iteration_chart/javascripts/excanvas.compiled.js"></script><![endif]-->
     <script language="javascript" type="text/javascript" src="../../../../plugin_assets/iteration_chart/javascripts/jquery.min.js"></script>
     <script language="javascript" type="text/javascript" src="../../../../plugin_assets/iteration_chart/javascripts/jquery.flot.min.js"></script>
-    <div id="iterchart#{tag_id}" style="width:600px;height:300px;"></div>
-    #{show_legend ? "<div id='iterchartlegend#{tag_id}' style='width:600px;margin:0 auto;padding:10px'></div>" : ""}
+    <script language="javascript" type="text/javascript" src="../../../../plugin_assets/iteration_chart/javascripts/jquery.flot.stack.min.js"></script>
+    <div style="width:#{chart_width}px;">
+    <div id="iterchart#{tag_id}" style="width:#{chart_width}px;height:#{chart_height}px;"></div>
+    #{show_legend ? "<div id='iterchartlegend#{tag_id}' style='width:#{chart_width}px;margin:0 auto;padding:10px'></div>" : ""}
+    </div>
     
     <script id="source" language="javascript" type="text/javascript">
     jQuery.noConflict();
     (function($) {
       $(function () {
-        xlabels = [#{@iterations.collect{|iteration| '"' + iteration['name'] + '"'}.join(',')}];
+        xlabels = #{@iterations.collect{|iteration| iteration['name']}.to_json};
         $.plot($('#iterchart#{tag_id}'), [
         #{series.collect{|aseries|
           '{' +
-            [(aseries[:label].nil? ? nil : 'label:' + quote_if_string(aseries[:label]).to_s),
-             (aseries[:color].nil? ? nil : 'color:' + quote_if_string(aseries[:color]).to_s),
+            [(aseries[:label].nil? ? nil : 'label:' + aseries[:label].to_json),
+             (aseries[:color].nil? ? nil : 'color:' + aseries[:color].to_json),
+             (aseries[:stack].nil? ? nil : 'stack:' + aseries[:stack].to_json),
              aseries[:types].collect{|type|
+               lineWidth = aseries[:line_width].nil? ? '':',lineWidth:#{aseries[:line_width].to_json}'
                case type
                when :points then "points:{show:true}"
-               when :line then "lines:{show:true}"
-               when :area then "lines:{show:true,fill:#{fill},lineWidth:1}"
-               when :bar then "bars:{show:true,barWidth:1,align:'center',fill:#{fill}}"
+               when :line then "lines:{show:true#{lineWidth}}"
+               when :area then "lines:{show:true,fill:#{aseries[:fill].to_json}#{lineWidth}}"
+               when :bar then "bars:{show:true,barWidth:1,align:'center',fill:#{aseries[:fill].to_json}#{lineWidth}}"
                end
              },
-             'data:[' + aseries[:points].collect{|point| '[' + point.join(',') + ']' }.join(',') + ']'
+             'data:' + aseries[:points].to_json
             ].flatten.compact.join(',') +
           '}'
         }.join(',')}
         ], {
+          series: {
+            #{@parameters['stack'].nil? ? "":"stack:#{@parameters['stack'].to_json}"}
+          },
           legend: {
             show: #{show_legend.to_s},
-            container: '#iterchartlegend#{tag_id}',
-            noColumns: #{legend_columns.nil? ? 'undefined' : legend_columns}
+            #{legend_columns.nil? ? "":"noColumns:#{legend_columns},"}
+            container: '#iterchartlegend#{tag_id}'
           },
           xaxis: {
             minTickSize: 1,
-            min: #{iterations_from.nil? ? 'undefined' : iterations_from},
-            max: #{iterations_to.nil? ? 'undefined' : iterations_to},
+            #{iterations_from.nil? ? "":"min:#{iterations_from},"}
+            #{iterations_to.nil? ? "":"max:#{iterations_to},"}
             tickFormatter: function(val, axis) {
               return (val == axis.min || xlabels[val] == undefined)? "" : xlabels[val];
             }
           },
           yaxis: {
-            min: #{min_y.nil? ? 'undefined' : min_y},
-            max: #{max_y.nil? ? 'undefined' : max_y}
+            #{[
+            min_y.nil? ? nil:"min:#{min_y}",
+            max_y.nil? ? nil:"max:#{max_y}"
+            ].compact.join(',')}
           },
           grid: {
             markings: function (axes) {
@@ -112,9 +122,12 @@ class IterationChart
     {
       :label => definition['label'],
       :color => definition['color'],
+      :fill => definition['fill-opacity'].nil? ?
+        (@parameters['fill-opacity'].nil? ? true : @parameters['fill-opacity']) : definition['fill-opacity'],
+      :line_width => definition['line-width'].nil? ? @parameters['line-width'] : definition['line-width'],
       :types => types_description_to_types(definition['type']),
       :cumulative => (definition['cumulative'] == true),
-      :stack => (definition['stack'] == true || (@parameters['stacked'] == true && definition['stack'] != false)),
+      :stack => definition['stack'],
       :negate => (definition['negate'] == true),
       :offset => definition['offset'].to_f,
       :iterations_from => iteration_description_to_i(definition['iterations-from']),
@@ -153,14 +166,14 @@ class IterationChart
         mql_results_to_points(@project.execute_mql(query[:query])),
         query);
     }), aseries)
-    points = points.select{|point| point[1] != 0} if aseries[:types].include?(:bar)
+    points = points.select{|point| point[1] != 0} if aseries[:types] == [:bar]
     points
   end
   
   def mql_results_to_points(mql_result)
     mql_result.collect{|row|
       [iteration_index(row.values.first), row.values.second.to_f]
-    }.select{|point| point[1] != 0}
+    }
   end
   
   def post_process_points(points, options)
@@ -217,10 +230,6 @@ class IterationChart
   def to_f_or_nil(obj)
     string = obj.to_s
     (string.nil? || string.match(/^[-+]?\d+\.?\d*$/) == nil) ? nil : string.to_f
-  end
-  
-  def quote_if_string(obj)
-    [Numeric, TrueClass, FalseClass].any?{|type| obj.is_a?(type)} ? obj : '"' + obj.to_s + '"'
   end
  
   def can_be_cached?
